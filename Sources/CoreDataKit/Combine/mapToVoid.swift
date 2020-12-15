@@ -7,11 +7,12 @@
 
 import Combine
 
-extension AnyPublisher {
+extension Publisher {
     
     func mapToVoid() -> AnyPublisher<Void, Failure> {
         
         return self.map { _ in Void() }
             .eraseToAnyPublisher()
     }
+    
 }

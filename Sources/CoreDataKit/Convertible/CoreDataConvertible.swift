@@ -22,7 +22,6 @@ extension CoreDataConvertible {
     func sync(
         in context: NSManagedObjectContext
     ) -> AnyPublisher<T, Error> {
-//        return context.rx.sync(entity: self, update: update)
         fatalError()
     }
     
