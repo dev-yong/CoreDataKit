@@ -8,38 +8,45 @@
 import CoreData
 import Combine
 
-open class CoreDataRepository<T: CoreDataConvertible>: RepositoryProtocol {
-   
-    let context: NSManagedObjectContext
+class CoreDataRepository<T: MOConvertible>: RepositoryProtocol
+where T.ManagedObjectType.DomainType == T {
+    
+    private let coreDataStack: CoreDataStack
+    private let moc: NSManagedObjectContext
     
     init(
-        context: NSManagedObjectContext
+        name: String
     ) {
-        self.context = context
+        let coreDataStack = CoreDataStack(name: name)
+        self.coreDataStack = coreDataStack
+        self.moc = coreDataStack.backgroundContext()
     }
     
-    public func save(
-        entity: T
+    func update(
+        entities: [T]
     ) -> AnyPublisher<Void, Error> {
-        return entity.sync(in: self.context)
-            .mapToVoid()
-            .flatMap(self.context.ext.save)
-            .eraseToAnyPublisher()
+        return self.moc.update(
+            entities: entities
+        ).mapToVoid()
     }
     
-    public func query(
-        with predicate: NSPredicate?,
-        sortDescriptors: [NSSortDescriptor]?
+    func query(
+        with predicate: NSPredicate? = nil,
+        sortDescriptors: [NSSortDescriptor]? = nil
+    ) -> AnyPublisher<[T], Error> {
+        let request: NSFetchRequest<T.ManagedObjectType> = T.ManagedObjectType.fetchRequest()
+        request.predicate = predicate
+        request.sortDescriptors = sortDescriptors
+        return self.moc.entities(fetchRequest: request)
+    }
+
+    func delete(
+        predicate: NSPredicate? = nil
     ) -> AnyPublisher<Void, Error> {
-        fatalError()
-    }
-    
-    public func delete(entity: T) -> AnyPublisher<Void, Error> {
-        return entity.sync(in: self.context)
-            .map { $0 as! NSManagedObject }
-            .flatMap(self.context.ext.delete)
-            .eraseToAnyPublisher()
+        self.moc.delete(
+            type: T.self,
+            predicate: predicate
+        )
     }
     
 }
-

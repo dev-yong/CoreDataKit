@@ -7,53 +7,43 @@
 
 import CoreData
 
-typealias Property = [String: Any]
-typealias PropertyList = [Property]
-
 enum BatchRequest {
     
-    enum Error: Swift.Error {
-        
-        case insertionIsFailed
-        case updateIsFailed
-        case deletionIsFailed
-        
-    }
-    
-    static func insert(
-        entityName: String,
-        with propertyList: PropertyList
+    static func insert<T: MOConvertible>(
+        entities: [T]
     ) -> NSBatchInsertRequest {
         var index = 0
-        let totalCount = propertyList.count
+        let totalCount = entities.count
+        let entityName = String(describing: T.ManagedObjectType.self)
         return NSBatchInsertRequest(
             entityName: entityName,
-            dictionaryHandler: { (dictionary) -> Bool in
+            managedObjectHandler: { (managedObject) -> Bool in
                 guard index < totalCount else { return true }
+                if let object = managedObject as? T.ManagedObjectType,
+                   let entity = entities[safe: index] {
+                    entity.sync(managedObject: object)
+                }
                 index += 1
                 return false
             }
         )
     }
     
-    static func update(
-        entityName: String,
-        with property: Property,
-        predicate: NSPredicate? = nil
-    ) -> NSBatchUpdateRequest {
-        let request = NSBatchUpdateRequest(entityName: entityName)
-        request.predicate = predicate
-        request.propertiesToUpdate = property
-        return request
-    }
-    
-    static func delete(
-        entityName: String,
+    static func delete<T: MOConvertible>(
+        type entityType: T.Type = T.self,
         predicate: NSPredicate? = nil
     ) -> NSBatchDeleteRequest {
+        let entityName = String(describing: T.ManagedObjectType.self)
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
         fetchRequest.predicate = predicate
         return NSBatchDeleteRequest(fetchRequest: fetchRequest)
     }
+    
+}
+
+enum BatchReqeustError: Error {
+    
+    case insertFailed
+    case deleteFailed
     
 }

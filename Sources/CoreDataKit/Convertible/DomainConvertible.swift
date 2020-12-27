@@ -5,12 +5,18 @@
 //  Created by 이광용 on 2020/12/04.
 //
 
-import Foundation
+import CoreData
 
-public protocol DomainConvertible {
+protocol DomainConvertible: NSFetchRequestResult {
     
-    associatedtype T
+    associatedtype DomainType
     
-    func asDomain() -> T
+    func asDomain() throws -> DomainType
+    static func fetchRequest() -> NSFetchRequest<Self>
+}
+
+enum DomainConvertError: Error {
+    
+    case convertingIsFailed
     
 }

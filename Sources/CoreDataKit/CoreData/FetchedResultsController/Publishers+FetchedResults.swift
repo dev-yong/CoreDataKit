@@ -1,35 +1,36 @@
 //
-//  FetchedResults+Publihser.swift
+//  Publishers+FetchedResults.swift
 //  
 //
-//  Created by 이광용 on 2020/12/15.
+//  Created by 이광용 on 2020/12/27.
 //
 
-import Combine
 import CoreData
+import Combine
 
 extension NSManagedObjectContext {
     
-    func publisher<T, F>(
+    func publisher<T>(
         fetchRequest: NSFetchRequest<T>,
-        sectionNameKeyPath: String,
-        cacheName: String?
-    ) -> Publishers.FetchedResults<T, F>
-    where T: NSFetchRequestResult, F: Error {
-        return Publishers.FetchedResults(
+        sectionNameKeyPath: String? = nil,
+        cacheName: String? = nil
+    ) -> AnyPublisher<[T], Error>
+    where T: NSFetchRequestResult {
+        return Publishers.FetchedResults<T>(
             request: fetchRequest,
             moc: self,
             sectionNameKeyPath: sectionNameKeyPath,
             cacheName: cacheName
         )
+        .eraseToAnyPublisher()
     }
     
 }
 
 extension Publishers {
     
-    struct FetchedResults<T, F>: Publisher
-    where T: NSFetchRequestResult, F: Error {
+    struct FetchedResults<T>: Publisher
+    where T: NSFetchRequestResult {
         
         // MARK: FetchedResultsController
         private let fetchedResultsController: NSFetchedResultsController<T>
@@ -37,8 +38,8 @@ extension Publishers {
         init(
             request: NSFetchRequest<T>,
             moc: NSManagedObjectContext,
-            sectionNameKeyPath: String,
-            cacheName: String?
+            sectionNameKeyPath: String? = nil,
+            cacheName: String? = nil
         ) {
             self.fetchedResultsController = NSFetchedResultsController<T>(
                 fetchRequest: request,
@@ -49,8 +50,8 @@ extension Publishers {
         }
         
         // MARK: Publisher
-        typealias Output = CollectionDifference<T>
-        typealias Failure = F
+        typealias Output = [T]
+        typealias Failure = Error
         
         func receive<S>(
             subscriber: S
@@ -67,11 +68,11 @@ extension Publishers {
         
         private final class FRCSubscription<S: Subscriber>
         : NSObject, Subscription, NSFetchedResultsControllerDelegate
-        where S.Input == FetchedResults.Output {
+        where S.Input == FetchedResults.Output, S.Failure == Error {
             
             // MARK: Subscription
-            private let subscriber: S
-            private weak var fetchedResultsController: NSFetchedResultsController<T>?
+            private var subscriber: S?
+            private var fetchedResultsController: NSFetchedResultsController<T>?
             
             init(
                 subscriber: S,
@@ -81,35 +82,58 @@ extension Publishers {
                 self.fetchedResultsController = fetchedResultsController
                 
                 super.init()
-                
+            
                 self.fetchedResultsController?.delegate = self
+                
+                self.fetchedResultsController?
+                    .managedObjectContext
+                    .perform { [weak self] in
+                        guard let self = self else { return }
+                        do {
+                            try self.fetchedResultsController?.performFetch()
+                            self.emitAsNeeded()
+                        } catch {
+                            self.subscriber?.receive(completion: .failure(error))
+                        }
+                    }
             }
+            
+            private var requestedDemand: Subscribers.Demand = .none
             
             func request(
                 _ demand: Subscribers.Demand
             ) {
-                
+                if demand != .none {
+                    self.requestedDemand += demand
+                }
+                self.emitAsNeeded()
             }
             
             func cancel() {
                 
+                self.subscriber = nil
+                self.fetchedResultsController = nil
+            }
+
+            private func emitAsNeeded() {
+                guard self.requestedDemand > .none else { return }
+                let objects = self.fetchedResultsController?.fetchedObjects ?? []
+                if let demand = self.subscriber?.receive(objects) {
+                    self.requestedDemand += demand
+                }
+                self.requestedDemand -= 1
             }
             
             // MARK: NSFetchedResultsControllerDelegate
-            func controller(
-                _ controller: NSFetchedResultsController<NSFetchRequestResult>,
-                didChangeContentWith diff: CollectionDifference<NSManagedObjectID>
-            ) {
-                
-            }
-            
             func controllerDidChangeContent(
                 _ controller: NSFetchedResultsController<NSFetchRequestResult>
             ) {
-                
+                self.emitAsNeeded()
             }
+            
         }
         
     }
     
 }
+

@@ -13,18 +13,19 @@ public protocol RepositoryProtocol {
     associatedtype T
     
     /// Create or Update
-    func save(
-        entity: T
+    func update(
+        entities: [T]
     ) -> AnyPublisher<Void, Error>
     
     /// Read
     func query(
         with predicate: NSPredicate?,
         sortDescriptors: [NSSortDescriptor]?
-    ) -> AnyPublisher<Void, Error>
+    ) -> AnyPublisher<[T], Error>
     
     /// Delete
     func delete(
-        entity: T
+        predicate: NSPredicate?
     ) -> AnyPublisher<Void, Error>
+    
 }

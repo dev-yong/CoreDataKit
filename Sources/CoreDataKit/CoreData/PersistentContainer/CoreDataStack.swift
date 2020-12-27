@@ -6,6 +6,7 @@
 //
 
 import CoreData
+import Combine
 
 class CoreDataStack {
     
@@ -15,40 +16,38 @@ class CoreDataStack {
     init(
         name: String
     ) {
-        
         self.container = NSPersistentContainer(name: name)
         self.setUpPersistentContainer()
     }
     
-    func newBackgroundContext() -> NSManagedObjectContext {
-        
-        self.container.newBackgroundContext()
+    func backgroundContext() -> NSManagedObjectContext {
+        let context = self.container.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        return context
     }
     
     private func setUpPersistentContainer() {
-        
         self.container.persistentStoreDescriptions.first?
             .setOption(
                 true as NSNumber,
                 forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
             )
         self.container.loadPersistentStores { (storeDescription, error) in
-            
-            guard error == nil else {
-                
-                fatalError("Unresolved error \(error!)")
+            if let error = error {
+                fatalError(error.localizedDescription)
             }
         }
         self.container.viewContext.automaticallyMergesChangesFromParent = false
         self.container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        self.container.viewContext.shouldDeleteInaccessibleFaults = true
         
-        self.storeRemoteChangeToken = NotificationCenter.default.addObserver(
-            forName: .NSPersistentStoreRemoteChange,
-            object: nil,
-            queue: nil) { (_) in
-            
-            print("\(#function): Got a persistent store remote change notification!")
-        }
+        NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)
+            .sink { _ in
+                
+                print("\(#function): Got a persistent store remote change notification!")
+            }.store(in: &self.cancellableBag)
     }
-
+    
+    private var cancellableBag = Set<AnyCancellable>()
+    
 }
