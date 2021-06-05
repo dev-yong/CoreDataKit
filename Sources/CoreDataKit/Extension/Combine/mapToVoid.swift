@@ -9,7 +9,7 @@ import Combine
 
 extension Publisher {
     
-    func mapToVoid() -> AnyPublisher<Void, Failure> {
+    public func mapToVoid() -> AnyPublisher<Void, Failure> {
         self.map { _ in Void() }
             .eraseToAnyPublisher()
     }

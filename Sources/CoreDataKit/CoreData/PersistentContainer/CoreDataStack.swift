@@ -8,38 +8,38 @@
 import CoreData
 import Combine
 
-class CoreDataStack {
+open class CoreDataStack: PresistentContainer {
     
-    private let container: NSPersistentContainer
+    public let _container: NSPersistentContainer
     private var storeRemoteChangeToken: NSObjectProtocol?
     
-    init(
+    public init(
         name: String
     ) {
-        self.container = NSPersistentContainer(name: name)
+        self._container = NSPersistentContainer(name: name)
         self.setUpPersistentContainer()
     }
     
-    func backgroundContext() -> NSManagedObjectContext {
-        let context = self.container.newBackgroundContext()
+    open func backgroundContext() -> NSManagedObjectContext {
+        let context = self._container.newBackgroundContext()
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         return context
     }
     
     private func setUpPersistentContainer() {
-        self.container.persistentStoreDescriptions.first?
+        self._container.persistentStoreDescriptions.first?
             .setOption(
                 true as NSNumber,
                 forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
             )
-        self.container.loadPersistentStores { (storeDescription, error) in
+        self._container.loadPersistentStores { (storeDescription, error) in
             if let error = error {
                 fatalError(error.localizedDescription)
             }
         }
-        self.container.viewContext.automaticallyMergesChangesFromParent = false
-        self.container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        self.container.viewContext.shouldDeleteInaccessibleFaults = true
+        self._container.viewContext.automaticallyMergesChangesFromParent = false
+        self._container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        self._container.viewContext.shouldDeleteInaccessibleFaults = true
         
         NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)
             .sink { _ in

@@ -7,7 +7,7 @@
 
 import CoreData
 
-protocol MOConvertible {
+public protocol MOConvertible {
     
     associatedtype ManagedObjectType: NSManagedObject, DomainConvertible
     

@@ -10,7 +10,7 @@ import Combine
 
 extension NSManagedObjectContext {
     
-    func publisher<T>(
+    public func publisher<T>(
         fetchRequest: NSFetchRequest<T>,
         sectionNameKeyPath: String? = nil,
         cacheName: String? = nil

@@ -7,7 +7,7 @@
 
 import CoreData
 
-protocol DomainConvertible: NSFetchRequestResult {
+public protocol DomainConvertible: NSFetchRequestResult {
     
     associatedtype DomainType
     
@@ -15,7 +15,7 @@ protocol DomainConvertible: NSFetchRequestResult {
     static func fetchRequest() -> NSFetchRequest<Self>
 }
 
-enum DomainConvertError: Error {
+public enum DomainConvertError: Error {
     
     case convertingIsFailed
     

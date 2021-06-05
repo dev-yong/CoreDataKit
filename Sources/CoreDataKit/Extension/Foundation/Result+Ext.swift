@@ -11,7 +11,7 @@ import Foundation
 
 extension Result {
     
-    func mapToVoid() -> Result<Void, Failure> {
+    public func mapToVoid() -> Result<Void, Failure> {
         return self.map { _ in Void() }
     }
     
